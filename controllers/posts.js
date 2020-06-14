@@ -3,20 +3,24 @@ const Post = require("../models/post");
 
 exports.createPost = (req, res, next) => {
     const url = req.protocol + "://" + req.get("host");
+    console.log("user data "+req.user);
     const post = new Post({
       title: req.body.title,
       content: req.body.content,
       imagePath: url + "/images/" + req.file.filename,
-      creator:req.userData.userId
+      user:req.userData.userId,
+      name:req.userData.name
     });
-    // console.log(req.userData);
+    console.log("creating process is going on!");
     post.save().then(createdPost => {
+      console.log(createdPost);
       res.status(201).json({
         message: "Post added successfully.",
         post: {
           ...createdPost,
-          id: createdPost._id
-        }
+          id: createdPost._id,
+          name:createdPost.name
+        } 
       });
     }).catch(err =>{
       res.status(500).json({
@@ -36,10 +40,10 @@ exports.createPost = (req, res, next) => {
       title: req.body.title,
       content: req.body.content,
       imagePath: imagePath,
-      creator:req.userData.userId
+      user:req.userData.userId
     });
     console.log(post);
-    Post.updateOne({ _id: req.params.id, creator: req.userData.userId}, post)
+    Post.updateOne({ _id: req.params.id, user: req.userData.userId}, post)
     .then(result => {
     //   console.log(result);
       if(result.n > 0){
@@ -89,7 +93,7 @@ exports.createPost = (req, res, next) => {
     })
     .catch(err =>{
       res.status(500).json({
-        message:"Fetching the posts Failed!"
+        message:"No posts found!"
       });
     });
   };
@@ -113,7 +117,7 @@ exports.createPost = (req, res, next) => {
 
 
   exports.deletePost =  (req, res, next) => {
-    Post.deleteOne({ _id: req.params.id, creator: req.userData.userId })
+    Post.deleteOne({ _id: req.params.id, user: req.userData.userId })
     .then(result => {
       console.log(result);
   if(result.n> 0){
@@ -130,3 +134,157 @@ exports.createPost = (req, res, next) => {
         });
       });
   };
+
+  exports.likePost = async (req,res)=>{
+    try {
+        const post = await Post.findById(req.params.postId);
+        
+        //check already liked
+
+        if(post.likes.filter(like =>
+            like.user.toString()===req.user.id).length>0){
+                return res.status(400).json({
+                    msg:"Post Already liked!!"
+                });
+        }
+
+        post.likes.unshift({
+            user:req.user.id
+        });
+
+        await post.save();
+        return res.json(post.likes);
+    } catch (err) {
+        console.error(err.message);
+        if(err.kind==='ObjectId'){
+            return res.status(404).json({
+                msg:"Post Not found!"
+            });
+        }
+            res.status(500).send({
+                msg:"Internal Server Error!"
+        })
+    }
+}
+
+exports.unLikePost = async (req,res)=>{
+    try {
+        const post = await Post.findById(req.params.postId);
+        
+        //check already liked
+
+        if(post.likes.filter(like =>
+            like.user.toString()===req.user.id).length === 0){
+                return res.status(400).json({
+                    msg:"Post has not been liked yet!!"
+                });
+        }
+
+        const removeIndex= post.likes.map(like => like.user.toString()).indexOf(req.user.id);
+
+        post.likes.splice(removeIndex,1);
+
+        await post.save();
+        return res.json(post.likes);
+    } catch (err) {
+        console.error(err.message);
+        if(err.kind==='ObjectId'){
+            return res.status(404).json({
+                msg:"Post Not found!"
+            });
+        }
+            res.status(500).send({
+                msg:"Internal Server Error!"
+        })
+    }
+}
+
+exports.addComment = async (req,res)=>{
+    const errors= validationResult(req);
+
+        if(!errors.isEmpty()){
+            return res.status(400).json({
+                errors:errors.array()
+            });
+        }
+
+    try {
+        const user = await User.findById(req.user.id).select("-password");
+
+        const post = await Post.findById(req.params.postId);
+
+        const newComment = {
+            text : req.body.text,
+            name: user.name,
+            avatar:user.avatar,
+            user:req.user.id
+        }
+
+        // console.log(newComment);
+
+        post.comments.unshift(newComment);
+
+        await post.save();
+
+        return res.json(post.comments);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send({
+            msg:"Internal Server Error!"
+        })
+    }
+}
+
+exports.deleteComment = async (req,res)=>{
+    try {
+        const post = await Post.findById(req.params.postId);
+        
+        if(!post){
+            return res.status(404).json({
+                msg:"Post not found!"
+            });
+        }
+
+        // find out comment
+
+        const comment = post.comments.find(comment=> comment.id===req.params.commentId);
+        console.log(comment);
+
+        if(!comment){
+            return res.status(404).json({
+                msg:"Comment doesn't exists!"
+            });
+        }
+
+        //check authorization
+
+        if(comment.user.toString()!==req.user.id){
+            return res.status(401).json({
+                msg:"Unauthorized Access!!"
+            });
+        }
+
+        const removeIndex= post.comments
+        .map(comment => comment.id.toString()).indexOf(req.user.commentId);
+
+        console.log(removeIndex);
+
+        post.comments.splice(removeIndex,1);
+
+        await post.save();
+
+        res.json({
+            msg:"Comment deleted successfully!"
+        })
+    } catch (err) {
+        console.error(err.message);
+        if(err.kind==='ObjectId'){
+            return res.status(404).json({
+                msg:"Comment Not found!"
+            });
+        }
+            res.status(500).send({
+                msg:"Internal Server Error!"
+        })
+    }
+}
