@@ -1,7 +1,9 @@
-const Post = require("../models/post");
 const formidable = require("formidable");
 const imgbb = require("imgbb-uploader");
+const { validationResult } = require("express-validator")
 
+const Post = require("../models/post");
+const User= require('../models/user');
 
 exports.createPost = (req, res) => {
   let form = new formidable.IncomingForm();
@@ -134,7 +136,7 @@ exports.createPost = (req, res) => {
   })
 };
 
-  exports.getPosts = (req, res, next) => {
+  exports.getPosts = async (req, res, next) => {
     const pageSize= +req.query.pagesize;// to convert string to number
     const currentPage= +req.query.page; //since the url query is treated as text
     const postQuery=Post.find();
@@ -190,24 +192,27 @@ exports.createPost = (req, res) => {
 
 
 
-  exports.deletePost =  (req, res, next) => {
-    Post.deleteOne({ _id: req.params.id, user: req.userData.userId })
-    .then(result => {
-      console.log(result);
-  if(result.n> 0){
-        res.status(200).json({ message: "deletion successful!" });
-        }else{
-          res.status(401).json({
-            message:"Un Authorized Access!"
-          })
-        }
-      })
-      .catch(err =>{
-        res.status(500).json({
-          message:"Deleting the posts Failed!"
-        });
-      });
-  };
+  exports.deletePost =  async (req, res) => {
+    try{
+    const post = await Post.findOne({_id:req.params.id})
+    console.log(post)
+    const deleteStatus = await Post.deleteOne({ _id: req.params.id, creator: req.userData.userId });
+    if(deleteStatus.n> 0)
+      res.status(200).json({ message: "deletion successful!" });
+    else
+    {
+        res.status(401).json({
+          message:"Un Authorized Access!"
+        })
+    }
+  }
+  catch(err){
+    console.log(err.message)
+    res.status(500).json({
+              message:"Deleting the posts Failed!"
+            });
+  }
+};
 
   exports.likePost = async (req,res)=>{
     try {
@@ -251,13 +256,13 @@ exports.unLikePost = async (req,res)=>{
         //check already liked
 
         if(post.likes.filter(like =>
-            like.user.toString()===req.user.id).length === 0){
+            like.user.toString()===req.userData.creator).length === 0){
                 return res.status(400).json({
                     msg:"Post has not been liked yet!!"
                 });
         }
 
-        const removeIndex= post.likes.map(like => like.user.toString()).indexOf(req.user.id);
+        const removeIndex= post.likes.map(like => like.user.toString()).indexOf(req.userData.creator);
 
         post.likes.splice(removeIndex,1);
 
@@ -286,15 +291,15 @@ exports.addComment = async (req,res)=>{
         }
 
     try {
-        const user = await User.findById(req.user.id).select("-password");
-
+        const user = await User.findOne(req.userData.creator).select("-password");
+      console.log(user)
         const post = await Post.findById(req.params.postId);
 
         const newComment = {
             text : req.body.text,
             name: user.name,
             avatar:user.avatar,
-            user:req.user.id
+            user:req.userData.userId
         }
 
         // console.log(newComment);
@@ -315,6 +320,7 @@ exports.addComment = async (req,res)=>{
 exports.deleteComment = async (req,res)=>{
     try {
         const post = await Post.findById(req.params.postId);
+        // console.log(post)
         
         if(!post){
             return res.status(404).json({
@@ -325,7 +331,7 @@ exports.deleteComment = async (req,res)=>{
         // find out comment
 
         const comment = post.comments.find(comment=> comment.id===req.params.commentId);
-        console.log(comment);
+        // console.log(comment);
 
         if(!comment){
             return res.status(404).json({
@@ -335,16 +341,16 @@ exports.deleteComment = async (req,res)=>{
 
         //check authorization
 
-        if(comment.user.toString()!==req.user.id){
+        if(comment.user.toString()!==req.userData.userId){
             return res.status(401).json({
                 msg:"Unauthorized Access!!"
             });
         }
 
         const removeIndex= post.comments
-        .map(comment => comment.id.toString()).indexOf(req.user.commentId);
+        .map(comment => comment.id.toString()).indexOf(req.params.commentId);
 
-        console.log(removeIndex);
+        // console.log(removeIndex);
 
         post.comments.splice(removeIndex,1);
 

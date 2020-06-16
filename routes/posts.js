@@ -44,7 +44,7 @@ router.post("/comment/:postId",[
     postController.addComment
     )
     
-    router.delete("/:postId/:commentId",
+router.delete("/deleteComment/:postId/:commentId",
     checkAuth,
     postController.deleteComment);
 

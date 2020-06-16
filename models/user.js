@@ -19,8 +19,9 @@ const userSchema = mongoose.Schema({
         type: Date,
         default: Date.now
       },
-      avatar:{
-        type:String
+    avatar:{
+        type:String,
+        default: "https://i.ibb.co/4YvP9H7/upload-4c04e26baba6b7b6cbf86fcaa9f32ae5.gif"
     }
 });
 
