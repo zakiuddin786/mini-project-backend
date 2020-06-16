@@ -1,65 +1,138 @@
 const Post = require("../models/post");
+const formidable = require("formidable");
+const imgbb = require("imgbb-uploader");
 
 
-exports.createPost = (req, res, next) => {
-    const url = req.protocol + "://" + req.get("host");
-    console.log("user data "+req.user);
-    const post = new Post({
-      title: req.body.title,
-      content: req.body.content,
-      imagePath: url + "/images/" + req.file.filename,
-      user:req.userData.userId,
-      name:req.userData.name
-    });
-    console.log("creating process is going on!");
-    post.save().then(createdPost => {
-      console.log(createdPost);
-      res.status(201).json({
-        message: "Post added successfully.",
-        post: {
-          ...createdPost,
-          id: createdPost._id,
-          name:createdPost.name
-        } 
+exports.createPost = (req, res) => {
+  let form = new formidable.IncomingForm();
+  form.keepExtensions = true;
+
+  form.parse(req, async (err, fields, file) => {
+    try {
+    if (err) {
+      return res.status(400).json({
+        error: "Incompatible Image",
       });
-    }).catch(err =>{
-      res.status(500).json({
-        message:"Error while creating the post! please retry."
+    }
+
+    const {
+      title,
+      content,
+      image,
+    } = fields;
+    const creator= req.userData.userId;
+    const creatorName = req.userData.name;
+    console.log(creatorName);
+    if(!title || !content || !file.image){
+      return res.status(400).json({
+          message:"One or more required fields are missing!"
       })
-    });
-  };
+    }
+
+    let newPost = new Post(fields);
+    newPost.creator=creator;
+    newPost.creatorName=creatorName;
+
+    if(file.image){
+      console.log("processing image!");
+      if (file.image.size > 9000000) {
+        return res.status(400).json({
+          error: "File size too big. Should be below 9 MB",
+        });
+      }
+      // console.log(file.image.path);
+      const img = await imgbb(process.env.imgbb,file.image.path);
+      // console.log(img);
+      newPost.imagePath = img.display_url;
+
+      console.log(newPost);
+      const post = await newPost.save();
+
+     return  res.json({
+                message: "Post added successfully.",
+                post: post
+              });
+    }
+  }
+    catch(err){
+      console.error(err.message);
+        res.status(500).send({
+            msg:"Internal Server Error!"
+        })
+    }
+  })
+}
 
   exports.updatePost = (req, res, next) => {
-    let imagePath = req.body.imagePath;
-    if (req.file) {
-      const url = req.protocol + "://" + req.get("host");
-      imagePath = url + "/images/" + req.file.filename
-    }
-    const post = new Post({
-      _id: req.body.id,
-      title: req.body.title,
-      content: req.body.content,
-      imagePath: imagePath,
-      user:req.userData.userId
-    });
-    console.log(post);
-    Post.updateOne({ _id: req.params.id, user: req.userData.userId}, post)
-    .then(result => {
-    //   console.log(result);
-      if(result.n > 0){
-      res.status(200).json({ message: "Update successful!" });
-      }else{
-        res.status(401).json({
-          message:"Un Authorized Access!"
-        })
-      }
-    })
-    .catch(err =>{
-      res.status(500).json({
-        message:"Coudn't update the post!"
+  let form = new formidable.IncomingForm();
+  form.keepExtensions = true;
+
+  form.parse(req, async (err, fields, file) => {
+    try {
+    if (err) {
+      return res.status(400).json({
+        error: "Incompatible Image",
       });
-    })
-  };
+    }
+
+    const {
+      title,
+      content,
+      image,
+    } = fields;
+    const creator= req.userData.userId;
+    const creatorName = req.userData.name;
+
+    if(!title || !content || !file.image){
+      return res.status(400).json({
+          message:"One or more required fields are missing!"
+      })
+    }
+
+    let newPost = {
+      ...fields,
+      creator : creator,
+      creatorName : creatorName
+    };
+
+    if(file.image){
+      console.log("processing image!");
+      if (file.image.size > 9000000) {
+        return res.status(400).json({
+          error: "File size too big. Should be below 9 MB",
+        });
+      }
+      // console.log(file.image.path);
+      const img = await imgbb(process.env.imgbb,file.image.path);
+      // console.log(img);
+      newPost.imagePath = img.display_url;
+      // const post = await newPost.save();
+
+      const post = await Post.updateOne(
+        { _id: req.params.id, creator:creator},
+        {$set: newPost });
+
+      if(post.n > 0)
+      {
+         return res.status(200).json({ 
+            message: "Update successful!" });
+      }
+      else
+      {
+            res.status(401).json({
+              message:"Un Authorized Access!"
+            })
+      }
+       }
+  }
+    catch(err){
+      console.error(err.message);
+        res.status(500).send({
+            msg:"unAuthorized Access!"
+        })
+    }
+  })
+};
 
   exports.getPosts = (req, res, next) => {
     const pageSize= +req.query.pagesize;// to convert string to number
@@ -99,20 +172,21 @@ exports.createPost = (req, res, next) => {
   };
 
 
-  exports.getpost = (req, res, next) => {
-    Post.findById(req.params.id).then(post => {
+  exports.getpost = async (req, res, next) => {
+    try{
+    const post = await Post.findById(req.params.id);
       if (post) {
-        res.status(200).json(post);
-      } else {
+        return res.status(200).json(post);
+      }
+       else {
         res.status(404).json({ message: "Post not found!" });
       }
-    })
-    .catch(err =>{
+    }
+    catch(err) {
       res.status(500).json({
         message:"Fetching the post Failed!"
       });
-    });
-  };
+  }};
 
 
 
@@ -142,15 +216,18 @@ exports.createPost = (req, res, next) => {
         //check already liked
 
         if(post.likes.filter(like =>
-            like.user.toString()===req.user.id).length>0){
+            like.user.toString()===req.userData.userId).length>0){
                 return res.status(400).json({
                     msg:"Post Already liked!!"
                 });
         }
 
         post.likes.unshift({
-            user:req.user.id
+            user:req.userData.userId,
+            name:req.userData.name
         });
+
+        console.log(post);
 
         await post.save();
         return res.json(post.likes);
