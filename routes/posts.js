@@ -5,7 +5,6 @@ const { check } = require("express-validator");
 const postController= require('../controllers/posts');
 
 const checkAuth = require("../middlewares/check-Auth");
-const fileExtract = require('../middlewares/fileExtract');
 
 router.post("/createPost",
     checkAuth,

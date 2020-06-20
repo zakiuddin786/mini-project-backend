@@ -1,0 +1,4 @@
+{
+    "appService.defaultWebAppToDeploy": "/subscriptions/87972a6e-4189-4d32-9cdc-bcd41da78b09/resourceGroups/miniproject/providers/Microsoft.Web/sites/miniprojectbackend",
+    "appService.deploySubpath": "."
+}

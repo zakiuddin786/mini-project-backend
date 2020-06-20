@@ -24,6 +24,10 @@ const app=express();
 app.use(bodyParser.json());
 app.use(cors());
 
+app.get("/",(req,res)=>{
+    res.send("App is Running");
+})
+
 app.use("/api/posts",postRoutes);
 app.use("/api/user",userRoutes);
 
