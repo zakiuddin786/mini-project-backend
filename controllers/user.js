@@ -91,3 +91,21 @@ exports.userLogin = async (req,res,next)=>{
         });
     }
 }
+
+
+exports.getUsers = async (req, res) => {
+  try{
+    const user = await User.find();
+    console.log(user);
+    return res.status(200).json({
+        message: "Users fetched successfully!",
+        users: user,
+      });
+  }
+  catch(err){
+    console.log(err.message);
+    return res.status(401).json({
+       message:"No User found!"
+   });
+  }
+  };

@@ -41,7 +41,7 @@ router.post("/comment/:postId",[
     check("text","Text is required!").not().isEmpty()
     ]],
     postController.addComment
-    )
+)
     
 router.delete("/deleteComment/:postId/:commentId",
     checkAuth,

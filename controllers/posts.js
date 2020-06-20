@@ -217,6 +217,7 @@ exports.createPost = (req, res) => {
   exports.likePost = async (req,res)=>{
     try {
         const post = await Post.findById(req.params.postId);
+        const user = await User.findById(req.userData.userId);
         
         //check already liked
 
@@ -229,7 +230,8 @@ exports.createPost = (req, res) => {
 
         post.likes.unshift({
             user:req.userData.userId,
-            name:req.userData.name
+            name:req.userData.name,
+            avatar:user.avatar
         });
 
         console.log(post);
@@ -256,18 +258,22 @@ exports.unLikePost = async (req,res)=>{
         //check already liked
 
         if(post.likes.filter(like =>
-            like.user.toString()===req.userData.creator).length === 0){
+            like.user.toString()===req.userData.userId).length === 0){
                 return res.status(400).json({
                     msg:"Post has not been liked yet!!"
                 });
         }
 
-        const removeIndex= post.likes.map(like => like.user.toString()).indexOf(req.userData.creator);
+        const removeIndex= post.likes.map(like => like.user.toString()).indexOf(req.userData.userId);
+        // console.log(removeIndex);
 
         post.likes.splice(removeIndex,1);
 
         await post.save();
-        return res.json(post.likes);
+        return res.json({
+          likes:post.likes,
+          message:"removed post like"
+        });
     } catch (err) {
         console.error(err.message);
         if(err.kind==='ObjectId'){
