@@ -40,14 +40,13 @@ exports.userSignup = async (req,res)=>{
             const token = jwt.sign({email:user.email,userId:user._id,name:user.name},
                 process.env.JWT_KEY,{expiresIn:"4h"})
                 console.log(token);
-                const { avatar} = user;
+                // const { avatar ,_id} = user;
+                console.log(user);
                 res.status(200).json({
                     token:token,
-                    user:{
-                        email:email,
-                        name:name,
-                        avatar:avatar
-                    }
+                    userId:user._id,
+                    avatar:user.avatar,
+                    name:user.name
                 });
         }
         catch(err){
@@ -59,22 +58,26 @@ exports.userSignup = async (req,res)=>{
 }
 
 
-exports.userLogin = async (req,res,next)=>{
+exports.userLogin = async (req,res)=>{
+    // console.log("in log")
     try{
     const user = await User.findOne({email:req.body.email});
     const check=  await bcrypt.compare(req.body.password,user.password);
+    console.log(user);
     if(check){
     const token = jwt.sign({email:user.email,userId:user._id,name:user.name},
         process.env.JWT_KEY,{expiresIn:"4h"})
-        console.log(token);
-        const {email, name, avatar} = user;
+        // console.log(token);
+        // this.http.post<{token:string,userId:string,avatar:string,name:string,email:string}>(BACKEND_URL+"/login",authdata)
+//
+        const {email, name, avatar,_id} = user;
+        console.log(user);
         res.status(200).json({
             token:token,
-            user:{
-                email,
-                name,
-                avatar
-            }
+            userId:user._id,
+            name:user.name,
+            avatar:user.avatar,
+            email:user.email
         });
     }
     else
