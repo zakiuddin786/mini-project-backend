@@ -34,6 +34,7 @@ exports.createPost = (req, res) => {
     let newPost = new Post(fields);
     newPost.creator=creator;
     newPost.creatorName=creatorName;
+    newPost.avatar=req.userData.avatar;
 
     if(file.image){
       console.log("processing image!");
@@ -140,6 +141,8 @@ exports.createPost = (req, res) => {
     const pageSize= +req.query.pagesize;// to convert string to number
     const currentPage= +req.query.page; //since the url query is treated as text
     const postQuery=Post.find();
+    const post = await Post.find();
+    console.log(post);
     let fetchedPosts;
   
     if(pageSize && currentPage)

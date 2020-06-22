@@ -22,6 +22,9 @@ const PostSchema =mongoose.Schema({
         type:mongoose.Schema.Types.String,
         ref:"User"
     },
+    avatar:{
+        type:String
+    },
     likes: [
     {
         user: {

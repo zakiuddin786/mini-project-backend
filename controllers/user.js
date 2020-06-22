@@ -36,8 +36,8 @@ exports.userSignup = async (req,res)=>{
             user.password = await bcrypt.hash(password,salt);
 
             await user.save();
-
-            const token = jwt.sign({email:user.email,userId:user._id,name:user.name},
+            
+            const token = jwt.sign({email:user.email,userId:user._id,name:user.name,avatar:user.avatar},
                 process.env.JWT_KEY,{expiresIn:"4h"})
                 console.log(token);
                 // const { avatar ,_id} = user;
@@ -65,7 +65,7 @@ exports.userLogin = async (req,res)=>{
     const check=  await bcrypt.compare(req.body.password,user.password);
     console.log(user);
     if(check){
-    const token = jwt.sign({email:user.email,userId:user._id,name:user.name},
+    const token = jwt.sign({email:user.email,userId:user._id,name:user.name,avatar:user.avatar},
         process.env.JWT_KEY,{expiresIn:"4h"})
         // console.log(token);
         // this.http.post<{token:string,userId:string,avatar:string,name:string,email:string}>(BACKEND_URL+"/login",authdata)
