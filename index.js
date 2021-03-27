@@ -31,7 +31,7 @@ app.get("/",(req,res)=>{
 app.use("/api/posts",postRoutes);
 app.use("/api/user",userRoutes);
 
-const port = process.env.PORT||8000;
+const port = process.env.PORT||3000;
 app.listen(port,()=>{
     console.log(`app is running on ${port}`);
 });

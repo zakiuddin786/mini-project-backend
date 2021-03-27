@@ -6,6 +6,7 @@ const Post = require("../models/post");
 const User= require('../models/user');
 
 exports.createPost = (req, res) => {
+  console.log("printing body",req.body);
   let form = new formidable.IncomingForm();
   form.keepExtensions = true;
 
@@ -138,42 +139,23 @@ exports.createPost = (req, res) => {
 };
 
   exports.getPosts = async (req, res, next) => {
-    const pageSize= +req.query.pagesize;// to convert string to number
-    const currentPage= +req.query.page; //since the url query is treated as text
-    const postQuery=Post.find();
-    const post = await Post.find();
-    console.log(post);
-    let fetchedPosts;
-  
-    if(pageSize && currentPage)
-    {
-      postQuery
-      .skip(pageSize*(currentPage-1))
-      .limit(pageSize);
+    // const pageSize= +req.query.pagesize;// to convert string to number
+    // const currentPage= +req.query.page; //since the url query is treated as text
+    try {
+      let fetchedPosts = await Post.find().sort({_id:-1});
+      let totalPosts = await Post.countDocuments();
+       
+        res.status(200).json({
+          message: "Posts fetched successfully!",
+          posts: fetchedPosts,
+          maxPosts:totalPosts
+        });
+    } catch (error) {
+      console.log(error);
+      return res.status(500).send(error);
     }
-  
-    console.log(req.query);
-  
-     postQuery
-     .then(documents => {
-       fetchedPosts=documents;
-       return Post.countDocuments();
-      // res.status(200).json({
-      //   message: "Posts fetched successfully!",
-      //   posts: documents
-      })
-      .then(count=>{
-      res.status(200).json({
-        message: "Posts fetched successfully!",
-        posts: fetchedPosts,
-        maxPosts:count
-      });
-    })
-    .catch(err =>{
-      res.status(500).json({
-        message:"No posts found!"
-      });
-    });
+   
+    
   };
 
 
@@ -257,26 +239,32 @@ exports.createPost = (req, res) => {
 exports.unLikePost = async (req,res)=>{
     try {
         const post = await Post.findById(req.params.postId);
-        
+        console.log(post);
         //check already liked
-
-        if(post.likes.filter(like =>
-            like.user.toString()===req.userData.userId).length === 0){
-                return res.status(400).json({
-                    msg:"Post has not been liked yet!!"
-                });
+        if(post.likes){
+          if(post.likes.filter(like =>
+              like.user.toString()===req.userData.userId).length === 0){
+                  return res.status(400).json({
+                      msg:"Post has not been liked yet!!"
+                  });
+          }
+  
+          const removeIndex= post.likes.map(like => like.user.toString()).indexOf(req.userData.userId);
+          // console.log(removeIndex);
+  
+          post.likes.splice(removeIndex,1);
+  
+          await post.save();
+          return res.json({
+            likes:post.likes,
+            message:"removed post like"
+          });
         }
-
-        const removeIndex= post.likes.map(like => like.user.toString()).indexOf(req.userData.userId);
-        // console.log(removeIndex);
-
-        post.likes.splice(removeIndex,1);
-
-        await post.save();
-        return res.json({
-          likes:post.likes,
-          message:"removed post like"
-        });
+        else{
+          return res.status(400).send({
+            msg:"No likes yet on the post"
+          })
+        }
     } catch (err) {
         console.error(err.message);
         if(err.kind==='ObjectId'){
@@ -379,4 +367,56 @@ exports.deleteComment = async (req,res)=>{
                 msg:"Internal Server Error!"
         })
     }
+}
+
+exports.getPostsBySearch = async(req,res)=>{
+  console.log(`finding posts by title/description ${req.params.word}`)
+  // TODO: 
+  try{
+  var word = req.params.word;
+  // .slice(1,-1)
+  console.log(word);
+  const fetchedPosts = await Post.aggregate([
+    {
+      $match:{
+          $or:[
+              {
+                  $and:[
+                      {
+                        title:{$regex:word,$options:"$i"}
+                      }
+                  ]
+              },
+              {
+                  $and:[
+                      {
+                        content:{$regex:word,$options:"$i"}
+                      }
+                  ]
+              }
+          ]
+      }
+
+  },
+  ])
+
+  // console.log(fetchedPosts1)
+  // const fetchedPosts = await Post.find({
+  //   title:{$regex:word,$options:"$i"}
+  // });
+
+  // const userQuery = await Editorial.find({problem_code:{$regex:name,$options:"$i"}});
+  return res.status(200).send({
+    message: "Posts fetched by Search!",
+    posts: fetchedPosts,
+    maxPosts:fetchedPosts.length
+  });
+  }
+  catch(error){
+    console.log(error);
+    return res.status(400).send({
+
+    message:"Internal Error"
+    })
+  }
 }

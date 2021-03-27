@@ -32,7 +32,7 @@ router.post("/like/:postId",
     checkAuth,
     postController.likePost);
 
-router.put("/unLike/:postId",
+router.post("/unLike/:postId",
     checkAuth,
     postController.unLikePost);
 
@@ -46,5 +46,7 @@ router.post("/comment/:postId",[
 router.delete("/deleteComment/:postId/:commentId",
     checkAuth,
     postController.deleteComment);
+
+    router.get("/getPosts/:word",postController.getPostsBySearch);
 
 module.exports = router;
