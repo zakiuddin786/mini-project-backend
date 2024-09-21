@@ -1,5 +1,5 @@
 const mongoose =require('mongoose');
-
+const db = require("mongoose");
 const PostSchema =mongoose.Schema({
     title:{
         type:String,
